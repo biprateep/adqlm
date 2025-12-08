@@ -1,0 +1,8 @@
+flask
+astro-datalab
+google-generativeai
+beautifulsoup4
+requests
+numpy
+scikit-learn
+sentence-transformers
