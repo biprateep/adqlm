@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOIRLab Data Assistant</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NOIRLab Data Assistant</h1>
+            <p>Ask questions in plain English to retrieve astronomical data.</p>
+        </header>
+
+        <div id="chat-box" class="chat-box">
+            <div class="message system">
+                <p>Hello! I'm ready to help you find data from NOIRLab. Ask me something like "Find stars with g-magnitude less than 18 in the SMash survey."</p>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <textarea id="user-input" placeholder="Type your query here..."></textarea>
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
