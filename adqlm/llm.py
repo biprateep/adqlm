@@ -1,14 +1,15 @@
 import os
-import google.generativeai as genai
+from google import genai
 
 class LLMClient:
-    def __init__(self, api_key=None, model_name='gemini-pro'):
-        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
+    def __init__(self, api_key=None, model_name='gemini-2.5-flash'):
+        # Prefer GEMINI_API_KEY, fallback to GOOGLE_API_KEY
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         if not self.api_key:
-            raise ValueError("GOOGLE_API_KEY is not set and not provided.")
+            raise ValueError("GEMINI_API_KEY (or GOOGLE_API_KEY) is not set and not provided.")
         
-        genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel(model_name)
+        self.client = genai.Client(api_key=self.api_key)
+        self.model_name = model_name
 
     def generate_sql(self, user_query, context_docs):
         """
@@ -33,7 +34,10 @@ Instructions:
 
 SQL Query:
 """
-        response = self.model.generate_content(prompt)
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt
+        )
         return response.text.strip()
 
     def explain_result(self, user_query, sql_query, data_sample):
@@ -48,5 +52,8 @@ The result (first few rows) is:
 
 Please provide a concise summary of what this data represents in response to the user's question.
 """
-        response = self.model.generate_content(prompt)
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt
+        )
         return response.text.strip()
