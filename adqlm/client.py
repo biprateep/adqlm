@@ -138,7 +138,10 @@ class AdqlmAssistant:
                 df.to_csv(filepath, index=False)
                 
                 # Preview
-                data_preview = df.head(10).to_dict(orient='records')
+                # Replace NaN with None (which becomes null in JSON)
+                import numpy as np
+                df_clean = df.replace({np.nan: None})
+                data_preview = df_clean.head(10).to_dict(orient='records')
                 row_count = len(df)
             else:
                 return {"error": "No data returned."}
