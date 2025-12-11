@@ -1,0 +1,50 @@
+[
+  {
+    "question": "Find all objects in the usno table within 0.1 degrees of ra=200, dec=30.",
+    "sql": "SELECT * FROM usno.source WHERE q3c_radial_query(ra, dec, 200, 30, 0.1)"
+  },
+  {
+    "question": "Count the number of sources in gaia_dr2 where parallax > 10 and magnitude < 15.",
+    "sql": "SELECT count(*) FROM gaia_dr2.gaia_source WHERE parallax > 10 AND phot_g_mean_mag < 15"
+  },
+  {
+    "question": "Join gaia and sdss tables within 1 arcsec.",
+    "sql": "SELECT g.source_id, s.objid FROM gaia_dr2.gaia_source AS g, sdss_dr16.specobj AS s WHERE q3c_join(g.ra, g.dec, s.ra, s.dec, 1.0/3600.0)"
+  },
+  {
+    "question": "Count objects classified as 'deVauc' galaxies in Legacy Surveys DR9 within 0.1 deg of 286.6, 43.7",
+    "sql": "SELECT COUNT(*) FROM ls_dr9.tractor WHERE type = 'DEV' AND q3c_radial_query(ra, dec, 286.602228, 43.780606, 0.1)"
+  },
+  {
+    "question": "Get the top 100 stars from Gaia DR3 with proper motion > 50 mas/yr.",
+    "sql": "SELECT TOP 100 * FROM gaia_dr3.gaia_source WHERE pm > 50"
+  },
+  {
+    "question": "Find sources in unso table with magnitude between 10 and 15",
+    "sql": "SELECT * FROM usno.source WHERE bmag BETWEEN 10 AND 15"
+  },
+  {
+    "question": "Show me 5 galaxies from the nsc_dr2 object table.",
+    "sql": "SELECT TOP 5 * FROM nsc_dr2.object WHERE class_star < 0.2"
+  },
+  {
+    "question": "Count rows in dad_dr1.ancillary where z > 0.5",
+    "sql": "SELECT count(*) FROM dad_dr1.ancillary WHERE z > 0.5"
+  },
+  {
+    "question": "Select all columns for objects in wise_allwise within 5 arcmin of a specific point (10.5, -5.2)",
+    "sql": "SELECT * FROM wise_allwise.source WHERE q3c_radial_query(ra, dec, 10.5, -5.2, 5.0/60.0)"
+  },
+  {
+    "question": "Perform a crossmatch between des_dr1 main table and gaia_dr2 source table within 0.5 arcsec tailored for proper motion.",
+    "sql": "SELECT * FROM des_dr1.main AS d, gaia_dr2.gaia_source AS g WHERE q3c_join(d.ra, d.dec, g.ra, g.dec, 0.5/3600.0)"
+  },
+  {
+    "question": "Find quasars in sdss_dr16 with redshift greater than 3.",
+    "sql": "SELECT * FROM sdss_dr16.specobj WHERE class = 'QSO' AND z > 3"
+  },
+  {
+    "question": "Get average magnitude of stars in gaia_dr2.",
+    "sql": "SELECT AVG(phot_g_mean_mag) FROM gaia_dr2.gaia_source"
+  }
+]

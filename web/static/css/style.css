@@ -4,19 +4,21 @@ body {
     margin: 0;
     display: flex;
     justify-content: center;
-    height: 100vh;
+    /* Remove fixed height to allow global scrolling */
+    min-height: 100vh;
 }
 
 .container {
     width: 90%;
     max-width: 800px;
+    /* Remove fixed height and overflow hidden */
     background: white;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
-    overflow: hidden;
     margin: 20px 0;
+    min-height: 80vh;
 }
 
 header {
@@ -29,7 +31,7 @@ header {
 .chat-box {
     flex: 1;
     padding: 20px;
-    overflow-y: auto;
+    /* Remove internal scroll */
     background-color: #fff;
     border-bottom: 1px solid #ddd;
 }
@@ -83,7 +85,8 @@ header {
     border-collapse: collapse;
 }
 
-.data-preview th, .data-preview td {
+.data-preview th,
+.data-preview td {
     border: 1px solid #ddd;
     padding: 4px;
     text-align: left;
@@ -91,8 +94,30 @@ header {
 
 .input-area {
     display: flex;
+    flex-direction: column;
+    /* Stack input and controls */
     padding: 20px;
     background-color: #f8f9fa;
+    gap: 10px;
+}
+
+.controls {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.model-select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    background-color: white;
+    font-size: 0.9em;
+    min-width: 200px;
+}
+
+.input-row {
+    display: flex;
+    gap: 10px;
 }
 
 textarea {
@@ -102,7 +127,7 @@ textarea {
     border: 1px solid #ddd;
     resize: none;
     height: 50px;
-    margin-right: 10px;
+    /* margin-right: 10px; Handled by gap now */
 }
 
 button {
@@ -113,8 +138,100 @@ button {
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
+    height: 50px;
+    /* Match textarea height more or less */
 }
 
 button:hover {
     background-color: #0056b3;
+}
+
+/* New Workflow Styles */
+.sql-review-area,
+.result-area {
+    margin: 20px 20px 0 20px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+}
+
+.sql-review-area h3,
+.result-area h3 {
+    margin-top: 0;
+    font-size: 1.1em;
+    color: #495057;
+}
+
+#sql-editor {
+    width: 95%;
+    font-family: monospace;
+    font-size: 1.1em;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #fff;
+    color: #333;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.primary-btn {
+    background-color: #28a745;
+}
+
+.primary-btn:hover {
+    background-color: #218838;
+}
+
+.secondary-btn {
+    background-color: #6c757d;
+}
+
+.secondary-btn:hover {
+    background-color: #5a6268;
+}
+
+.danger-btn {
+    background-color: #dc3545;
+}
+
+.danger-btn:hover {
+    background-color: #c82333;
+}
+
+.download-btn {
+    display: inline-block;
+    background-color: #17a2b8;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.download-btn:hover {
+    background-color: #138496;
+}
+
+/* Table refinements */
+.result-area table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    background: white;
+}
+
+.result-area th {
+    background-color: #e9ecef;
+}
+
+.result-area td,
+.result-area th {
+    padding: 8px;
+    border: 1px solid #dee2e6;
 }

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NOIRLab Data Assistant</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -15,16 +17,45 @@
 
         <div id="chat-box" class="chat-box">
             <div class="message system">
-                <p>Hello! I'm ready to help you find data from NOIRLab. Ask me something like "Find stars with g-magnitude less than 18 in the SMash survey."</p>
+                <p>Hello! I'm ready to help you find data from NOIRLab. Ask me something like "Find stars with
+                    g-magnitude less than 18 in the SMash survey."</p>
             </div>
         </div>
 
+        <!-- SQL Review Area (Hidden by default) -->
+        <div id="sql-review-area" class="sql-review-area" style="display: none;">
+            <h3>Review Generated SQL</h3>
+            <textarea id="sql-editor" rows="5"></textarea>
+            <div class="actions">
+                <button id="copy-sql-btn" class="secondary-btn">Copy to Clipboard</button>
+                <button id="run-sql-btn" class="primary-btn">Approve & Run</button>
+                <button id="cancel-sql-btn" class="danger-btn">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Result Area (Hidden by default) -->
+        <div id="result-area" class="result-area" style="display: none;">
+            <h3>Query Results</h3>
+            <div id="result-preview"></div>
+            <a id="download-link" href="#" class="download-btn" target="_blank" style="display: none;">Download Full
+                CSV</a>
+        </div>
+
         <div class="input-area">
-            <textarea id="user-input" placeholder="Type your query here..."></textarea>
-            <button id="send-btn">Send</button>
+            <div class="controls">
+                <label for="model-select" style="margin-right: 10px; align-self: center; color: #555;">Model:</label>
+                <select id="model-select" class="model-select">
+                    <option value="" disabled selected>Loading models...</option>
+                </select>
+            </div>
+            <div class="input-row">
+                <textarea id="user-input" placeholder="Type your query here..."></textarea>
+                <button id="send-btn">Send</button>
+            </div>
         </div>
     </div>
 
     <script src="/static/js/main.js"></script>
 </body>
+
 </html>

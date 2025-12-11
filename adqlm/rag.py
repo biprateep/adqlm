@@ -4,16 +4,72 @@ from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import re
+import json
+from typing import List, Dict, Any, Optional
 
 class DocumentEmbedder:
-    def __init__(self, model_name='all-MiniLM-L6-v2'):
-        self.model = SentenceTransformer(model_name)
-        self.documents = []
-        self.embeddings = None
-        self.doc_sources = []
+    """
+    Handles document embedding, ingestion, and retrieval using Sentence Transformers.
+    """
+    def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
+        """
+        Initialize the embedder with a specific transformer model.
 
-    def fetch_text_from_url(self, url):
-        """Fetches text content from a URL."""
+        Args:
+            model_name (str): The name of the sentence-transformer model to use.
+        """
+        self.model = SentenceTransformer(model_name)
+        self.documents: List[str] = []
+        self.embeddings: Optional[np.ndarray] = None
+        self.doc_sources: List[str] = []
+
+    def load_json_docs(self, file_path: str):
+        """
+        Loads pre-built documents (schema or reference) from a JSON file.
+
+        The JSON file is expected to be a list of dictionaries, each containing
+        'text' and 'source' keys.
+
+        Args:
+            file_path (str): Path to the JSON file.
+        """
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+            
+            new_docs = [item['text'] for item in data]
+            new_sources = [item['source'] for item in data]
+            
+            if not new_docs:
+                return
+
+            self.documents.extend(new_docs)
+            self.doc_sources.extend(new_sources)
+            
+            print(f"Embedding {len(new_docs)} documents from {file_path}...")
+            new_embeddings = self.model.encode(new_docs)
+            
+            if self.embeddings is None:
+                self.embeddings = new_embeddings
+            else:
+                self.embeddings = np.vstack([self.embeddings, new_embeddings])
+            print(f"Loaded {file_path}.")
+            
+        except FileNotFoundError:
+            print(f"File not found at {file_path}")
+        except Exception as e:
+            print(f"Error loading docs from {file_path}: {e}")
+
+    def fetch_text_from_url(self, url: str) -> str:
+        """
+        Fetches text content from a URL.
+
+        Args:
+            url (str): The URL to scrape.
+
+        Returns:
+            str: Cleaned text content from the page.
+        """
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -33,8 +89,13 @@ class DocumentEmbedder:
             print(f"Error fetching {url}: {e}")
             return ""
 
-    def ingest_urls(self, urls):
-        """Ingests content from a list of URLs and updates the index."""
+    def ingest_urls(self, urls: List[str]):
+        """
+        Ingests content from a list of URLs and updates the index.
+
+        Args:
+            urls (List[str]): List of URLs to process.
+        """
         new_docs = []
         new_sources = []
         
@@ -61,8 +122,17 @@ class DocumentEmbedder:
         else:
             self.embeddings = np.vstack([self.embeddings, new_embeddings])
 
-    def retrieve(self, query, top_k=3):
-        """Retrieves top_k documents relevant to the query."""
+    def retrieve(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+        """
+        Retrieves top_k documents relevant to the query.
+
+        Args:
+            query (str): The user query.
+            top_k (int): Number of documents to retrieve.
+
+        Returns:
+            List[Dict[str, Any]]: A list of results, each containing 'text', 'source', and 'score'.
+        """
         if self.embeddings is None or len(self.documents) == 0:
             return []
             
@@ -76,6 +146,6 @@ class DocumentEmbedder:
             results.append({
                 'text': self.documents[idx],
                 'source': self.doc_sources[idx],
-                'score': similarities[idx]
+                'score': float(similarities[idx]) # Ensure python float
             })
         return results

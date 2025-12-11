@@ -6,33 +6,153 @@ document.getElementById('user-input').addEventListener('keypress', function (e) 
     }
 });
 
+// New Event Listeners
+document.getElementById('run-sql-btn').addEventListener('click', executeSQL);
+document.getElementById('cancel-sql-btn').addEventListener('click', hideReviewArea);
+document.getElementById('copy-sql-btn').addEventListener('click', copySQL);
+
+// On startup
+document.addEventListener('DOMContentLoaded', loadModels);
+
+function loadModels() {
+    fetch('/models')
+        .then(response => response.json())
+        .then(models => {
+            const select = document.getElementById('model-select');
+            select.innerHTML = '';
+
+            models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.name;
+
+                // Set default
+                if (model.id === 'models/gemma-3-27b-it') {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        })
+        .catch(err => {
+            console.error("Failed to load models", err);
+            const select = document.getElementById('model-select');
+            select.innerHTML = '<option disabled>Error loading models</option>';
+        });
+}
+
 function sendMessage() {
     const input = document.getElementById('user-input');
+    const modelSelect = document.getElementById('model-select');
     const message = input.value.trim();
+    const model = modelSelect.value;
+
     if (!message) return;
 
     addMessage(message, 'user');
     input.value = '';
-    
+
+    // Hide previous results
+    hideReviewArea();
+    hideResultArea();
+
     // Show loading...
     const loadingId = addMessage('Thinking...', 'assistant');
 
-    fetch('/query', {
+    fetch('/generate', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: message })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message, model: model })
     })
-    .then(response => response.json())
-    .then(data => {
-        removeMessage(loadingId);
-        displayResult(data);
-    })
-    .catch(error => {
-        removeMessage(loadingId);
-        addMessage('Error: ' + error, 'system');
+        .then(response => response.json())
+        .then(data => {
+            removeMessage(loadingId);
+            if (data.error) {
+                addMessage('Error: ' + data.error, 'system');
+            } else {
+                showReviewArea(data.sql);
+                addMessage("I've generated a query. Please review it above before executing.", 'assistant');
+            }
+        })
+        .catch(error => {
+            removeMessage(loadingId);
+            addMessage('Error: ' + error, 'system');
+        });
+}
+
+function showReviewArea(sql) {
+    const area = document.getElementById('sql-review-area');
+    const editor = document.getElementById('sql-editor');
+    editor.value = sql;
+    area.style.display = 'block';
+    area.scrollIntoView({ behavior: 'smooth' });
+}
+
+function hideReviewArea() {
+    document.getElementById('sql-review-area').style.display = 'none';
+}
+
+function hideResultArea() {
+    document.getElementById('result-area').style.display = 'none';
+}
+
+function copySQL() {
+    const sql = document.getElementById('sql-editor').value;
+    navigator.clipboard.writeText(sql).then(() => {
+        const btn = document.getElementById('copy-sql-btn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = originalText, 2000);
     });
+}
+
+function executeSQL() {
+    const sql = document.getElementById('sql-editor').value;
+    if (!sql) return;
+
+    // Show loading indicator in result area or chat?
+    // Let's use chat to show progress
+    const loadingId = addMessage('Executing query...', 'assistant');
+
+    fetch('/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sql: sql })
+    })
+        .then(response => response.json())
+        .then(data => {
+            removeMessage(loadingId);
+            if (data.error) {
+                addMessage('Execution Error: ' + data.error, 'system');
+            } else {
+                showResultArea(data);
+                addMessage(`Query executed successfully. ${data.rows} rows returned.`, 'assistant');
+            }
+        })
+        .catch(error => {
+            removeMessage(loadingId);
+            addMessage('Network Error: ' + error, 'system');
+        });
+}
+
+function showResultArea(data) {
+    const area = document.getElementById('result-area');
+    const preview = document.getElementById('result-preview');
+    const downloadLink = document.getElementById('download-link');
+
+    if (data.preview) {
+        preview.innerHTML = buildTable(data.preview);
+    }
+
+    if (data.csv_url) {
+        downloadLink.href = data.csv_url;
+        downloadLink.style.display = 'inline-block';
+        downloadLink.textContent = `Download CSV (${data.rows} rows)`;
+    } else {
+        downloadLink.style.display = 'none';
+    }
+
+    area.style.display = 'block';
+    area.scrollIntoView({ behavior: 'smooth' });
 }
 
 function addMessage(text, type) {
@@ -40,16 +160,19 @@ function addMessage(text, type) {
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${type}`;
     msgDiv.id = 'msg-' + Date.now();
-    
-    // Allow HTML for system/assistant messages
+
     if (type !== 'user') {
         msgDiv.innerHTML = text;
     } else {
         msgDiv.textContent = text;
     }
-    
+
     chatBox.appendChild(msgDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    // Scroll window to bottom smoothly
+    window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: 'smooth'
+    });
     return msgDiv.id;
 }
 
@@ -58,40 +181,20 @@ function removeMessage(id) {
     if (msg) msg.remove();
 }
 
-function displayResult(data) {
-    let content = `<p>${data.explanation}</p>`;
-    
-    if (data.sql) {
-        content += `<div class="sql-block">${data.sql}</div>`;
-    }
-    
-    if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-        content += buildTable(data.data);
-    } else if (data.data) {
-        content += `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
-    }
-
-    addMessage(content, 'assistant');
-}
-
 function buildTable(data) {
-    if (data.length === 0) return '';
+    if (data.length === 0) return '<p>No data returned.</p>';
     const headers = Object.keys(data[0]);
-    let html = '<div class="data-preview"><table><thead><tr>';
-    
+    let html = '<table><thead><tr>';
+
     headers.forEach(h => html += `<th>${h}</th>`);
     html += '</tr></thead><tbody>';
-    
-    // Limit to 10 rows for display
-    data.slice(0, 10).forEach(row => {
+
+    data.forEach(row => {
         html += '<tr>';
         headers.forEach(h => html += `<td>${row[h]}</td>`);
         html += '</tr>';
     });
-    
-    html += '</tbody></table></div>';
-    if (data.length > 10) {
-        html += `<p style="font-size:0.8em">Showing 10 of ${data.length} rows.</p>`;
-    }
+
+    html += '</tbody></table>';
     return html;
 }
