@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, Response
 from adqlm.client import AdqlmAssistant
 import os
 import pandas as pd
@@ -126,8 +126,41 @@ def execute():
     if not sql_query:
         return jsonify({"error": "No SQL provided"}), 400
         
-    result = get_assistant().execute_and_save(sql_query)
+    result = get_assistant().execute_and_preview(sql_query)
     return jsonify(result)
+
+@app.route('/download_csv', methods=['POST'])
+@login_required
+def download_csv():
+    """
+    Endpoint to stream CSV download of a query result.
+    Expects JSON: { "sql": "SELECT ..." }
+    """
+    sql_query = request.json.get('sql')
+    if not sql_query:
+        return jsonify({"error": "No SQL provided"}), 400
+        
+    try:
+        # execute using the assistant's datalab client directly or a helper
+        # We need to render to CSV string
+        assistant = get_assistant()
+        print(f"Executing for download: {sql_query}")
+        df = assistant.datalab.execute_query(sql_query)
+        
+        if df is None:
+             return jsonify({"error": "No data returned"}), 404
+             
+        # Stream CSV
+        # We can use .to_csv() but return it as a string
+        csv_data = df.to_csv(index=False)
+        
+        return Response(
+            csv_data,
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=results.csv"}
+        )
+    except Exception as e:
+        return jsonify({"error": f"Download failed: {str(e)}"}), 500
 
 # Keeping /query for older tests but deprecated
 @app.route('/query', methods=['POST'])

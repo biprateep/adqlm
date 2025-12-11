@@ -9,3 +9,4 @@ adqlm.egg-info/
 web/static/downloads/
 schema_docs.json
 reference_docs.json
+.vercel

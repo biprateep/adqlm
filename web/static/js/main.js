@@ -143,10 +143,19 @@ function showResultArea(data) {
         preview.innerHTML = buildTable(data.preview);
     }
 
-    if (data.csv_url) {
-        downloadLink.href = data.csv_url;
+    if (data.rows && data.rows > 0) {
+        downloadLink.href = "#";
         downloadLink.style.display = 'inline-block';
         downloadLink.textContent = `Download CSV (${data.rows} rows)`;
+
+        // Remove old listeners to avoid duplicates if any (though usually clean slate)
+        const newBtn = downloadLink.cloneNode(true);
+        downloadLink.parentNode.replaceChild(newBtn, downloadLink);
+
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            downloadCSV();
+        });
     } else {
         downloadLink.style.display = 'none';
     }
@@ -197,4 +206,53 @@ function buildTable(data) {
 
     html += '</tbody></table>';
     return html;
+}
+
+function downloadCSV() {
+    const sql = document.getElementById('sql-editor').value;
+    if (!sql) return;
+
+    // Use a more specific selector if possible, or ID
+    // In showResultArea we act on an element with specific ID or class
+    // The previously modified code uses document.getElementById('download-link')
+    // but here we select by class. Let's standarize on ID if possible, but class is fine if unique.
+    const btn = document.getElementById('download-link'); // Safer
+    const originalText = btn.textContent;
+    btn.textContent = 'Preparing Download...';
+    // rudimentary disabled state
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.7';
+
+    fetch('/download_csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sql: sql })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error("Download failed");
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'results.csv';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            btn.textContent = originalText;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+        })
+        .catch(error => {
+            console.error('Download error:', error);
+            btn.textContent = 'Error Downloading';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+            }, 3000);
+        });
 }

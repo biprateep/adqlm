@@ -88,67 +88,39 @@ class AdqlmAssistant:
              
         return {"sql": sql_query}
 
-    def execute_and_save(self, sql_query: str, output_dir: str = "web/static/downloads") -> Dict[str, Any]:
+    def execute_and_preview(self, sql_query: str) -> Dict[str, Any]:
         """
-        Phase 2: Execute SQL, save to CSV, and return preview.
-
+        Phase 2: Execute SQL and return preview.
+        
         Args:
             sql_query (str): valid ADQL query.
-            output_dir (str, optional): Directory to save result CSVs.
 
         Returns:
-             Dict[str, Any]: execution result including status, preview data, and csv url.
+             Dict[str, Any]: execution result including status and preview data.
         """
         
-        # Smart LIMIT check
-        # ADQL supports 'TOP' (e.g. SELECT TOP 100 ...) and 'LIMIT' (VSQL style).
-        # We shouldn't add LIMIT if either exists.
-        upper_sql = sql_query.upper()
-        if "LIMIT " not in upper_sql and "TOP " not in upper_sql:
-            # Assuming if no limit/top, we safeguard with 100 for the preview/run 
-            # OR we trust the user. The user said "file download starts automatically".
-            # If they want a download, maybe they want ALL data?
-            # But for safety/speed, let's keep a sane default if looks unlimited,
-            # or maybe just run it. The user has explicitly approved it.
-            # Let's trust the approved SQL but maybe warn? 
-            # Actually, let's stick to the previous safety but smarter:
-            # Only append LIMIT if strictly necessary for a *preview*, 
-            # but here we are doing a "download". 
-            # Use original SQL for full execution.
-            execution_sql = sql_query
-        else:
-            execution_sql = sql_query
+        execution_sql = sql_query
+        # Smart LIMIT could go here but skipping for now to rely on user/predefined logic
 
         try:
             # Execute
-            print(f"Executing: {execution_sql}")
+            print(f"Executing for preview: {execution_sql}")
             df = self.datalab.execute_query(execution_sql)
             
-            # Save to CSV
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-                
-            # Generate unique filename
-            filename = f"results_{uuid.uuid4().hex[:8]}.csv"
-            filepath = os.path.join(output_dir, filename)
-            
-            # We need to handle if df is None or not a dataframe (e.g. string error)
-            # execute_query usually returns DataFrame
+            # We need to handle if df is None or not a dataframe
             if df is not None:
-                df.to_csv(filepath, index=False)
+                row_count = len(df)
                 
                 # Preview
-                # Replace NaN with None (which becomes null in JSON)
                 import numpy as np
                 df_clean = df.replace({np.nan: None})
+                # Limit preview to 10 rows
                 data_preview = df_clean.head(10).to_dict(orient='records')
-                row_count = len(df)
             else:
                 return {"error": "No data returned."}
 
             return {
                 "success": True,
-                "csv_url": f"/static/downloads/{filename}",
                 "preview": data_preview,
                 "rows": row_count
             }
@@ -166,7 +138,7 @@ class AdqlmAssistant:
             return {"explanation": gen_result["error"], "sql": None, "data": None}
             
         sql = gen_result["sql"]
-        exec_result = self.execute_and_save(sql)
+        exec_result = self.execute_and_preview(sql)
         
         if "error" in exec_result:
              return {"explanation": exec_result["error"], "sql": sql, "data": None}
