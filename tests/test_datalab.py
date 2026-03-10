@@ -21,7 +21,7 @@ with patch.dict('sys.modules', {
 }):
     import unittest
     # We use a context manager to ensure the environment is correct for the import
-    from adqlm.datalab import DataLabClient
+    from adqlm.datalab import NOIRLabService as DataLabClient
 
     class TestDataLabClient(unittest.TestCase):
         def setUp(self):
