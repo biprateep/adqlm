@@ -1,15 +1,16 @@
 from .rag import DocumentEmbedder
 from .llm import LLMClient
-from .datalab import DataLabClient
+from .datalab import NOIRLabService
+from .base_service import AstronomicalDataService
 import os
 import uuid
 from typing import Optional, List, Dict, Any
 
-class AdqlmAssistant:
+class ADQLMAssistant:
     """
     Main controller for the ADQLM assistant.
     
-    Coordinating the RAG system, LLM client, and DataLab execution interactively.
+    Coordinating the RAG system, LLM client, and dynamic execution across services interactively.
     """
     def __init__(self, google_api_key: Optional[str] = None, datalab_token: Optional[str] = None):
         """
@@ -21,7 +22,12 @@ class AdqlmAssistant:
         """
         self.rag = DocumentEmbedder(api_key=google_api_key)
         self.llm = LLMClient(api_key=google_api_key)
-        self.datalab = DataLabClient(token=datalab_token)
+
+        # Registry of available data services
+        self.services: Dict[str, AstronomicalDataService] = {
+            "noirlab": NOIRLabService(token=datalab_token),
+            # Add future services here, e.g., "astroquery": AstroqueryService()
+        }
         
         # Pre-load some documentation URLs (can be expanded)
         self.default_docs = [
@@ -74,21 +80,30 @@ class AdqlmAssistant:
              
         print(f"Refined Query: {refined_query}")
         
-        # 2. Retrieve Context (using refined query)
+        # 2. Route Query to appropriate service
+        print("Routing query to best service...")
+        selected_service_key = self.llm.route_query(refined_query, self.services, model_name=model_name)
+        print(f"Selected Service: {selected_service_key}")
+
+        # 3. Retrieve Context (using refined query)
+        # Ideally we'd filter RAG context based on the selected service, but retrieving generally is okay for now.
         context_docs = self.rag.retrieve(refined_query)
         
-        # 3. Generate SQL (using refined query and context)
+        # 4. Generate Query (using refined query and context)
         try:
-            sql_query = self.llm.generate_query(refined_query, context_docs, model_name=model_name)
+            generated_query = self.llm.generate_query(refined_query, context_docs, model_name=model_name)
         except Exception as e:
-            return {"error": f"Error generating SQL: {str(e)}"}
+            return {"error": f"Error generating query: {str(e)}"}
 
-        if sql_query.startswith("ERROR"):
-             return {"error": sql_query}
+        if generated_query.startswith("ERROR"):
+             return {"error": generated_query}
              
-        return {"sql": sql_query}
+        return {
+            "sql": generated_query,  # Keeping "sql" key for backward compatibility in frontend
+            "service": selected_service_key
+        }
 
-    def execute_and_preview(self, sql_query: str) -> Dict[str, Any]:
+    def execute_and_preview(self, sql_query: str, service_key: str = "noirlab") -> Dict[str, Any]:
         """
         Phase 2: Execute SQL and return preview.
         
@@ -102,13 +117,20 @@ class AdqlmAssistant:
         execution_sql = sql_query
         # Smart LIMIT could go here but skipping for now to rely on user/predefined logic
 
+
+        if service_key not in self.services:
+            return {"error": f"Unknown service: {service_key}"}
+
+        service = self.services[service_key]
+
         try:
             # Execute
-            print(f"Executing for preview: {execution_sql}")
-            df = self.datalab.execute_query(execution_sql)
+            print(f"Executing for preview on {service.get_name()}: {execution_sql}")
+            df = service.execute_query(execution_sql)
             
             # We need to handle if df is None or not a dataframe
-            if df is not None:
+            # Assuming services return pandas DataFrames for standard tabular preview
+            if df is not None and hasattr(df, 'head'):
                 row_count = len(df)
                 
                 # Preview
@@ -138,13 +160,15 @@ class AdqlmAssistant:
             return {"explanation": gen_result["error"], "sql": None, "data": None}
             
         sql = gen_result["sql"]
-        exec_result = self.execute_and_preview(sql)
+        service_key = gen_result.get("service", "noirlab")
+        exec_result = self.execute_and_preview(sql, service_key=service_key)
         
         if "error" in exec_result:
-             return {"explanation": exec_result["error"], "sql": sql, "data": None}
+             return {"explanation": exec_result["error"], "sql": sql, "data": None, "service": service_key}
              
         return {
             "sql": sql,
             "data": exec_result["preview"],
-            "explanation": f"Executed successfully. {exec_result['rows']} rows retrieved."
+            "service": service_key,
+            "explanation": f"Executed successfully via {self.services[service_key].get_name()}. {exec_result['rows']} rows retrieved."
         }
