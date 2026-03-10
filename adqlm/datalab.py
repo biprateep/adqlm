@@ -1,8 +1,9 @@
 from dl import queryClient as qc
 import pandas as pd
 from typing import Optional, Union, Any
+from .base_service import AstronomicalDataService
 
-class DataLabClient:
+class NOIRLabService(AstronomicalDataService):
     """
     A wrapper around the NOIRLab Data Lab queryClient.
     
@@ -21,7 +22,17 @@ class DataLabClient:
         if token:
             qc.set_auth_token(token)
 
-    def execute_query(self, sql: str, fmt: str = 'pandas') -> Optional[Union[pd.DataFrame, str]]:
+    def get_name(self) -> str:
+        return "NOIRLab Data Lab"
+
+    def get_description(self) -> str:
+        return (
+            "Use this service to query NOIRLab datasets such as Gaia, DES (Dark Energy Survey), "
+            "LS (Legacy Surveys), NSC (NOIRLab Source Catalog), and others using ADQL (Astronomical Data Query Language). "
+            "Ideal for spatial queries, table joins, and accessing large astronomical catalogs."
+        )
+
+    def execute_query(self, query: str, fmt: str = 'pandas', **kwargs) -> Union[pd.DataFrame, Any, None]:
         """
         Executes an ADQL query against NOIRLab Data Lab.
 
@@ -35,10 +46,10 @@ class DataLabClient:
         """
         try:
             # Clean potential markdown if leaked from LLM
-            sql = sql.replace('```sql', '').replace('```', '').strip()
+            sql = query.replace('```sql', '').replace('```', '').strip()
             
             # Execute query
-            result = qc.query(sql, fmt=fmt)
+            result = qc.query(sql, fmt=fmt, **kwargs)
             return result
         except Exception as e:
             # Consider returning None or raising specific custom exception instead of str

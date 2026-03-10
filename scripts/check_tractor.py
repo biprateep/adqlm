@@ -1,5 +1,4 @@
 from adqlm.client import AdqlmAssistant
-import os
 
 def check_tractor_docs():
     assistant = AdqlmAssistant()

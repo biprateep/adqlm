@@ -1,3 +1,3 @@
-from .client import AdqlmAssistant
+from .client import ADQLMAssistant
 
-__all__ = ['AdqlmAssistant']
+__all__ = ['ADQLMAssistant']
