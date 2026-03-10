@@ -1,15 +1,15 @@
-from adqlm.client import AdqlmAssistant
+from adqlm.client import ADQLMAssistant
 
 def main():
     # Initialize the assistant
     # Ensure GOOGLE_API_KEY is set in your environment
-    assistant = AdqlmAssistant()
+    assistant = ADQLMAssistant()
     
     # Ingest documentation (this happens once per session, but could be persisted)
     print("Ingesting documentation...")
     assistant.ingest_docs()
     
-    print("\n--- NoirLab Assistant CLI ---")
+    print("\n--- ADQLM Assistant CLI ---")
     print("Type 'exit' to quit.\n")
     
     while True:
