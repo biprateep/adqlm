@@ -21,7 +21,7 @@ class DataLabClient:
         if token:
             qc.set_auth_token(token)
 
-    def execute_query(self, sql: str, fmt: str = 'pandas') -> Union[pd.DataFrame, str]:
+    def execute_query(self, sql: str, fmt: str = 'pandas') -> Optional[Union[pd.DataFrame, str]]:
         """
         Executes an ADQL query against NOIRLab Data Lab.
 
@@ -30,7 +30,8 @@ class DataLabClient:
             fmt (str, optional): The return format, default is 'pandas'.
 
         Returns:
-            pd.DataFrame or str: The query result as a DataFrame, or an error message string.
+            pd.DataFrame, str or None: The query result as a DataFrame, or an error message string.
+                                       Returns None if an exception occurs.
         """
         try:
             # Clean potential markdown if leaked from LLM
