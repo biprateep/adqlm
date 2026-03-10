@@ -7,12 +7,10 @@ setup(
     install_requires=[
         "flask",
         "astro-datalab",
-        "google-generativeai",
+        "google-genai",
         "beautifulsoup4",
         "requests",
         "numpy",
-        "scikit-learn",
-        "sentence-transformers",
         "pandas"
     ],
     description="A library to query NOIRLab data using natural language",

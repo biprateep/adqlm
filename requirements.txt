@@ -4,5 +4,4 @@ google-genai
 beautifulsoup4
 requests
 numpy
-scikit-learn
-sentence-transformers
+

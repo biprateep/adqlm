@@ -1,27 +1,69 @@
 import numpy as np
 import requests
 from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+from google import genai
 import re
 import json
+import os
 from typing import List, Dict, Any, Optional
 
 class DocumentEmbedder:
     """
-    Handles document embedding, ingestion, and retrieval using Sentence Transformers.
+    Handles document embedding, ingestion, and retrieval using Google Gemini Embeddings.
     """
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = 'models/text-embedding-004'):
         """
-        Initialize the embedder with a specific transformer model.
+        Initialize the embedder with a specific embedding model.
 
         Args:
-            model_name (str): The name of the sentence-transformer model to use.
+            api_key (str): API key for Gemini.
+            model_name (str): The name of the embedding model to use.
         """
-        self.model = SentenceTransformer(model_name)
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not self.api_key:
+             # In a real scenario, we might raise an error or warn, but let's just print for now
+             # so the app doesn't crash on start if key is missing (though it won't work well)
+             print("Warning: No API key provided for DocumentEmbedder.")
+        
+        if self.api_key:
+            self.client = genai.Client(api_key=self.api_key)
+        else:
+            self.client = None
+
+        self.model_name = model_name
         self.documents: List[str] = []
         self.embeddings: Optional[np.ndarray] = None
         self.doc_sources: List[str] = []
+
+    def _embed(self, texts: List[str]) -> np.ndarray:
+        """Helper to embed a list of texts using the API."""
+        if not self.client:
+            print("Error: Client not initialized. Cannot embed.")
+            return np.array([])
+            
+        try:
+            # Batch embedding might be needed if list is huge, but for now assumption is reasonable chunks
+            # The python SDK supports batching automatically? Let's assume standard usage.
+            # Actually, genai.Client.models.embed_content usually takes one or list?
+            # Looking at SDK, we iterate or check if it supports list.
+            # To be safe and efficient, we'll embed one by one or in small batches if the SDK demands,
+            # but usually 'contents' can be a list.
+            
+            # Note: For 'models/text-embedding-004', the output dimensionality is 768 usually.
+            
+            embeddings = []
+            # Simple loop for robustnes. Can optimize later.
+            for text in texts:
+                result = self.client.models.embed_content(
+                    model=self.model_name,
+                    contents=text
+                )
+                embeddings.append(result.embeddings[0].values)
+            
+            return np.array(embeddings)
+        except Exception as e:
+            print(f"Embedding error: {e}")
+            return np.array([])
 
     def load_json_docs(self, file_path: str):
         """
@@ -47,12 +89,13 @@ class DocumentEmbedder:
             self.doc_sources.extend(new_sources)
             
             print(f"Embedding {len(new_docs)} documents from {file_path}...")
-            new_embeddings = self.model.encode(new_docs)
+            new_embeddings = self._embed(new_docs)
             
-            if self.embeddings is None:
-                self.embeddings = new_embeddings
-            else:
-                self.embeddings = np.vstack([self.embeddings, new_embeddings])
+            if new_embeddings.size > 0:
+                if self.embeddings is None:
+                    self.embeddings = new_embeddings
+                else:
+                    self.embeddings = np.vstack([self.embeddings, new_embeddings])
             print(f"Loaded {file_path}.")
             
         except FileNotFoundError:
@@ -116,11 +159,12 @@ class DocumentEmbedder:
         self.documents.extend(new_docs)
         self.doc_sources.extend(new_sources)
         
-        new_embeddings = self.model.encode(new_docs)
-        if self.embeddings is None:
-            self.embeddings = new_embeddings
-        else:
-            self.embeddings = np.vstack([self.embeddings, new_embeddings])
+        new_embeddings = self._embed(new_docs)
+        if new_embeddings.size > 0:
+            if self.embeddings is None:
+                self.embeddings = new_embeddings
+            else:
+                self.embeddings = np.vstack([self.embeddings, new_embeddings])
 
     def retrieve(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """
@@ -136,8 +180,23 @@ class DocumentEmbedder:
         if self.embeddings is None or len(self.documents) == 0:
             return []
             
-        query_embedding = self.model.encode([query])
-        similarities = cosine_similarity(query_embedding, self.embeddings)[0]
+        query_vec = self._embed([query])
+        if query_vec.size == 0:
+            return []
+            
+        # Cosine similarity using numpy
+        # sim = (A . B) / (||A|| * ||B||)
+        # Assuming embeddings are not guaranteed to be normalized, though API often returns normalized ones.
+        # Let's normalize just in case for correctness.
+        
+        def normalize(v):
+            norm = np.linalg.norm(v, axis=1, keepdims=True)
+            return v / (norm + 1e-10)
+            
+        norm_query = normalize(query_vec)
+        norm_embeddings = normalize(self.embeddings)
+        
+        similarities = np.dot(norm_query, norm_embeddings.T).flatten()
         
         top_indices = np.argsort(similarities)[-top_k:][::-1]
         
@@ -146,6 +205,6 @@ class DocumentEmbedder:
             results.append({
                 'text': self.documents[idx],
                 'source': self.doc_sources[idx],
-                'score': float(similarities[idx]) # Ensure python float
+                'score': float(similarities[idx])
             })
         return results

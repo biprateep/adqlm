@@ -42,13 +42,9 @@ def login_required(f):
 def login():
     if request.method == 'POST':
         password = request.form.get('password')
-        dev_pwd = os.environ.get('DEV_PASSWORD')
         public_pwd = os.environ.get('PUBLIC_PASSWORD')
         
-        if dev_pwd and password == dev_pwd:
-            session['role'] = 'dev'
-            return redirect(url_for('index'))
-        elif public_pwd and password == public_pwd:
+        if public_pwd and password == public_pwd:
             session['role'] = 'public'
             return redirect(url_for('index'))
         else:
@@ -70,24 +66,13 @@ def index():
 @app.route('/models')
 @login_required
 def get_models():
-    """Returns a list of supported Gemini/Gemma models based on role."""
+    """Returns a list of supported Gemma models."""
     
-    # Base models available to everyone (or just dev? Plan said Public=Gemma only)
     gemma_models = [
         {"id": "models/gemma-3-27b-it", "name": "Gemma 3 27B"}
     ]
     
-    advanced_models = [
-        {"id": "models/gemini-2.0-flash", "name": "Gemini 2.0 Flash"},
-        {"id": "models/gemini-2.5-flash", "name": "Gemini 2.5 Flash"},
-        {"id": "models/gemini-2.5-pro", "name": "Gemini 2.5 Pro"},
-    ]
-    
-    if session.get('role') == 'dev':
-        return jsonify(gemma_models + advanced_models)
-    else:
-        # Public role sees only Gemma
-        return jsonify(gemma_models)
+    return jsonify(gemma_models)
 
 @app.route('/generate', methods=['POST'])
 @login_required
@@ -99,15 +84,12 @@ def generate():
     user_input = request.json.get('message')
     model_name = request.json.get('model')
     
-    # Authorization check for model access
-    if session.get('role') == 'public':
-        # Enforce Gemma if public, even if they requested something else
-        # Or just reject. Let's enforce/overwrite to be safe.
-        # Actually, let's validate.
-        if model_name and "gemma" not in model_name:
-             return jsonify({"error": "Access Denied: You only have access to Gemma models."}), 403
-        if not model_name:
-             model_name = "models/gemma-3-27b-it"
+    # Enforce Gemma usage
+    if model_name and "gemma" not in model_name:
+            return jsonify({"error": "Access Denied: Only Gemma models are supported."}), 403
+    
+    if not model_name:
+            model_name = "models/gemma-3-27b-it"
 
     if not user_input:
         return jsonify({"error": "No message provided"}), 400

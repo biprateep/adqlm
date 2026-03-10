@@ -19,7 +19,7 @@ class AdqlmAssistant:
             google_api_key (str, optional): API key for Gemini. 
             datalab_token (str, optional): Token for Data Lab access.
         """
-        self.rag = DocumentEmbedder()
+        self.rag = DocumentEmbedder(api_key=google_api_key)
         self.llm = LLMClient(api_key=google_api_key)
         self.datalab = DataLabClient(token=datalab_token)
         
