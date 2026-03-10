@@ -1,11 +1,20 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, Response
 from adqlm.client import AdqlmAssistant
 import os
+import secrets
 import pandas as pd
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "super_secret_dev_key")
+app.secret_key = os.environ.get("SECRET_KEY")
+
+if not app.secret_key:
+    if __name__ == "__main__":
+        # Development mode: generate a random key for the session
+        app.secret_key = secrets.token_hex(24)
+    else:
+        # Production/Import mode: fail securely
+        raise RuntimeError("SECRET_KEY environment variable is not set. Please set it for production.")
 
 # Initialize the assistant globally (or lazily)
 assistant = None
