@@ -41,7 +41,8 @@ class NOIRLabService(AstronomicalDataService):
             fmt (str, optional): The return format, default is 'pandas'.
 
         Returns:
-            pd.DataFrame or str: The query result as a DataFrame, or an error message string.
+            pd.DataFrame, str or None: The query result as a DataFrame, or an error message string.
+                                       Returns None if an exception occurs.
         """
         try:
             # Clean potential markdown if leaked from LLM
