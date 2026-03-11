@@ -14,7 +14,8 @@ def get_assistant():
 def get_models():
     """Returns a list of supported models."""
     gemma_models = [
-        {"id": "models/gemma-3-27b-it", "name": "Gemma 3 27B"}
+        {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash"},
+        {"id": "gemini-2.0-flash-lite", "name": "Gemini 2.0 Flash Lite"}
     ]
     return jsonify(gemma_models)
 
@@ -28,7 +29,7 @@ def generate():
     model_name = request.json.get('model')
 
     if not model_name:
-            model_name = "models/gemma-3-27b-it"
+            model_name = "gemini-2.5-flash"
 
     if not user_input:
         return jsonify({"error": "No message provided"}), 400

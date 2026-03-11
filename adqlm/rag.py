@@ -11,7 +11,8 @@ class DocumentEmbedder:
     """
     Handles document embedding, ingestion, and retrieval using Google Gemini Embeddings.
     """
-    def __init__(self, api_key: Optional[str] = None, model_name: str = 'models/text-embedding-004'):
+    def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
+        model_name = model_name or os.environ.get('EMBEDDING_MODEL_NAME', 'models/text-embedding-004')
         """
         Initialize the embedder with a specific embedding model.
 
